@@ -177,7 +177,7 @@ class RollingMeanValueImputation(MissingValueImputation):
         cumsum = np.cumsum(adjusted_values_to_causality)
 
         ar_res = (
-            cumsum[self.window_size :] - cumsum[: -self.window_size]
+            cumsum[self.window_size:] - cumsum[: -self.window_size]
         ) / float(self.window_size)
 
         values[mask] = ar_res[mask]
@@ -372,7 +372,7 @@ class AddTimeFeatures(MapTransformation):
         self._update_cache(start, length)
         i0 = self._date_index[start]
         features = (
-            self._full_range_date_features[..., i0 : i0 + length]
+            self._full_range_date_features[..., i0: i0 + length]
             if self.date_features
             else None
         )
@@ -492,7 +492,7 @@ class AddInterDemandPeriodFeature(MapTransformation):
         )
         self._update_cache(start, length)
         i0 = self._date_index[start]
-        date_idx = self._date_index.iloc[i0 : i0 + length].index
+        date_idx = self._date_index.iloc[i0: i0 + length].index
         # When is_train is false, date_idx has len of target_len + prediction_len
         # which is useful in time feature generation, but we only need target length
         date_idx = date_idx[: len(data[self.target_field])]
