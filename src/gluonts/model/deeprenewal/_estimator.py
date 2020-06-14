@@ -21,7 +21,7 @@ from mxnet.gluon import HybridBlock
 # First-party imports
 from gluonts.core.component import DType, validated
 from gluonts.dataset.field_names import FieldName
-from gluonts.distribution import DistributionOutput, NegativeBinomialOutput
+from gluonts.distribution import NegativeBinomialOutput
 from gluonts.model.estimator import GluonEstimator
 from gluonts.model.predictor import Predictor, RepresentableBlockPredictor
 from gluonts.support.util import copy_parameters
@@ -33,10 +33,12 @@ from gluonts.time_feature import (
 from gluonts.trainer import Trainer
 from gluonts.transform import (
     AddAgeFeature,
+    AddInterDemandPeriodFeature,
     AddObservedValuesIndicator,
     AddTimeFeatures,
     AsNumpyArray,
     Chain,
+    DropZeroTarget,
     ExpectedNumInstanceSampler,
     InstanceSplitter,
     RemoveFields,
@@ -45,7 +47,6 @@ from gluonts.transform import (
     VstackFeatures,
 )
 
-from custom_gluon_feature import AddInterDemandPeriodFeature, DropNonZeroTarget
 
 # Relative imports
 from ._network import DeepRenewalPredictionNetwork, DeepRenewalTrainingNetwork
@@ -144,7 +145,9 @@ class DeepRenewalEstimator(GluonEstimator):
     ) -> None:
         super().__init__(trainer=trainer, dtype=dtype)
 
-        assert prediction_length > 0, "The value of `prediction_length` should be > 0"
+        assert (
+            prediction_length > 0
+        ), "The value of `prediction_length` should be > 0"
         assert (
             context_length is None or context_length > 0
         ), "The value of `context_length` should be > 0"
@@ -181,7 +184,9 @@ class DeepRenewalEstimator(GluonEstimator):
         self.use_feat_dynamic_real = use_feat_dynamic_real
         self.use_feat_static_cat = use_feat_static_cat
         self.use_feat_static_real = use_feat_static_real
-        self.cardinality = cardinality if cardinality and use_feat_static_cat else [1]
+        self.cardinality = (
+            cardinality if cardinality and use_feat_static_cat else [1]
+        )
         self.embedding_dimension = (
             embedding_dimension
             if embedding_dimension is not None
@@ -189,7 +194,9 @@ class DeepRenewalEstimator(GluonEstimator):
         )
         self.scaling = scaling
         self.lags_seq = (
-            lags_seq if lags_seq is not None else get_lags_for_frequency(freq_str=freq)
+            lags_seq
+            if lags_seq is not None
+            else get_lags_for_frequency(freq_str=freq)
         )
         self.time_features = (
             time_features
@@ -217,16 +224,24 @@ class DeepRenewalEstimator(GluonEstimator):
                 else []
             )
             + (
-                [SetField(output_field=FieldName.FEAT_STATIC_REAL, value=[0.0])]
+                [
+                    SetField(
+                        output_field=FieldName.FEAT_STATIC_REAL, value=[0.0]
+                    )
+                ]
                 if not self.use_feat_static_real
                 else []
             )
             + [
                 AsNumpyArray(
-                    field=FieldName.FEAT_STATIC_CAT, expected_ndim=1, dtype=self.dtype,
+                    field=FieldName.FEAT_STATIC_CAT,
+                    expected_ndim=1,
+                    dtype=self.dtype,
                 ),
                 AsNumpyArray(
-                    field=FieldName.FEAT_STATIC_REAL, expected_ndim=1, dtype=self.dtype,
+                    field=FieldName.FEAT_STATIC_REAL,
+                    expected_ndim=1,
+                    dtype=self.dtype,
                 ),
                 AsNumpyArray(
                     field=FieldName.TARGET,
@@ -250,7 +265,7 @@ class DeepRenewalEstimator(GluonEstimator):
                 AddInterDemandPeriodFeature(
                     start_field=FieldName.START,
                     target_field=FieldName.TARGET,
-                    output_field=FieldName.TARGET,  # FieldName.FEAT_TIME FieldName.TARGET #if we want to append to feat time,
+                    output_field=FieldName.TARGET,
                     pred_length=self.prediction_length,
                 ),
                 AddAgeFeature(
@@ -269,8 +284,11 @@ class DeepRenewalEstimator(GluonEstimator):
                         else []
                     ),
                 ),
-                DropNonZeroTarget(
-                    input_fields=[FieldName.FEAT_TIME, FieldName.OBSERVED_VALUES],
+                DropZeroTarget(
+                    input_fields=[
+                        FieldName.FEAT_TIME,
+                        FieldName.OBSERVED_VALUES,
+                    ],
                     target_field=FieldName.TARGET,
                     pred_length=self.prediction_length,
                 ),
@@ -282,7 +300,10 @@ class DeepRenewalEstimator(GluonEstimator):
                     train_sampler=ExpectedNumInstanceSampler(num_instances=1),
                     past_length=self.history_length,
                     future_length=self.prediction_length,
-                    time_series_fields=[FieldName.FEAT_TIME, FieldName.OBSERVED_VALUES],
+                    time_series_fields=[
+                        FieldName.FEAT_TIME,
+                        FieldName.OBSERVED_VALUES,
+                    ],
                     dummy_value=self.distr_output_m.value_in_support,
                     # pick_incomplete=False
                 ),
@@ -343,4 +364,3 @@ class DeepRenewalEstimator(GluonEstimator):
                 forecast_type=self.forecast_type,
             ),
         )
-

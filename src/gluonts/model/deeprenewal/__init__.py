@@ -14,7 +14,7 @@
 # Relative imports
 from ._estimator import DeepRenewalEstimator
 
-__all__ = ["DeepAREstimator"]
+__all__ = ["DeepRenewalEstimator"]
 
 # fix Sphinx issues, see https://bit.ly/2K2eptM
 for item in __all__:
