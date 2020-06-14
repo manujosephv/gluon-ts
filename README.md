@@ -1,4 +1,4 @@
-# GluonTS - Probabilistic Time Series Modeling in Python (Fork for Deep Renewal Process)
+# GluonTS - Probabilistic Time Series Modeling in Python
 
 [![PyPI](https://img.shields.io/pypi/v/gluonts.svg?style=flat-square)](https://pypi.org/project/gluonts/)
 [![GitHub](https://img.shields.io/github/license/awslabs/gluon-ts.svg?style=flat-square)](./LICENSE)
