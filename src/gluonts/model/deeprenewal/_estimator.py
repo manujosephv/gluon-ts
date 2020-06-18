@@ -117,6 +117,18 @@ class DeepRenewalEstimator(GluonEstimator):
     num_parallel_samples
         Number of evaluation samples per time series to increase parallelism during inference.
         This is a model optimization that does not affect the accuracy (default: 100)
+
+    forecast_type
+        The way the estimated M and Q are used to convert to a regular time-wise forecast.
+        flat --> A flat forecast of M/Q for the prediction length
+        exact --> Will use M and Q to produce a foreast with (Q) times 0,M, repeat
+        hybrid --> Will use M and Q to create flat forecasts, but the M/Q changes depending
+        on the subsequent predictions
+        eg: We trained the model with prediction length = 5. the output of the model are
+        M --> 22,33,12, Q--> 2,1,4
+        flat --> 11, 11, 11, 11, 11
+        exact --> 0, 22, 33, 0, 0
+        hybrid --> 11, 11, 33, 3, 3 (22/2, 22/2, 33/1, 12/4, 12/4)
     """
 
     @validated()

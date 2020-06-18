@@ -22,7 +22,6 @@ import mxnet as mx
 from gluonts.block.feature import FeatureEmbedder
 from gluonts.block.scaler import MeanScaler, NOPScaler
 
-# TODO bring back validation once model is ready
 from gluonts.core.component import DType, validated
 from gluonts.distribution import DistributionOutput, Distribution
 from gluonts.distribution.distribution import getF
