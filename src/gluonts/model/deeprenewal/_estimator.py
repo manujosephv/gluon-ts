@@ -27,32 +27,32 @@ from gluonts.model.predictor import Predictor, RepresentableBlockPredictor
 from gluonts.support.util import copy_parameters
 from gluonts.time_feature import (
     TimeFeature,
-    time_features_from_frequency_str,
     get_lags_for_frequency,
+    time_features_from_frequency_str,
 )
 from gluonts.trainer import Trainer
 from gluonts.transform import (
     AddAgeFeature,
-    AddInterDemandPeriodFeature,
     AddObservedValuesIndicator,
     AddTimeFeatures,
     AsNumpyArray,
     Chain,
-    DropZeroTarget,
     ExpectedNumInstanceSampler,
-    InstanceSplitter,
     RemoveFields,
     SetField,
     Transformation,
     VstackFeatures,
 )
 
+# Third-party imports
+from mxnet.gluon import HybridBlock
+
+from ._forecast_generator import IntermittentSampleForecastGenerator
 
 # Relative imports
 from ._network import DeepRenewalPredictionNetwork, DeepRenewalTrainingNetwork
-from ._forecast_generator import IntermittentSampleForecastGenerator
-
-INTERDEMAND_INTERVAL = "interdemand_interval"
+from ._sampler import RenewalInstanceSplitter
+from ._transforms import AddInterDemandPeriodFeature
 
 
 class DeepRenewalEstimator(GluonEstimator):
@@ -102,9 +102,6 @@ class DeepRenewalEstimator(GluonEstimator):
     embedding_dimension
         Dimension of the embeddings for categorical features
         (default: [min(50, (cat+1)//2) for cat in cardinality])
-    distr_output
-        Distribution to use to evaluate observations and sample predictions
-        (default: StudentTOutput())
     scaling
         Whether to automatically scale the target values (default: true)
     lags_seq
@@ -117,7 +114,6 @@ class DeepRenewalEstimator(GluonEstimator):
     num_parallel_samples
         Number of evaluation samples per time series to increase parallelism during inference.
         This is a model optimization that does not affect the accuracy (default: 100)
-
     forecast_type
         The way the estimated M and Q are used to convert to a regular time-wise forecast.
         flat --> A flat forecast of M/Q for the prediction length
@@ -136,25 +132,25 @@ class DeepRenewalEstimator(GluonEstimator):
         self,
         freq: str,
         prediction_length: int,
-        trainer: Trainer = Trainer(),
+        trainer: Optional[Trainer] = Trainer(),
         context_length: Optional[int] = None,
-        num_layers: int = 2,
-        num_cells: int = 40,
-        cell_type: str = "lstm",
-        dropout_rate: float = 0.1,
-        use_feat_dynamic_real: bool = False,
-        use_feat_static_cat: bool = False,
-        use_feat_static_real: bool = False,
+        num_layers: Optional[int] = 2,
+        num_cells: Optional[int] = 40,
+        cell_type: Optional[str] = "lstm",
+        dropout_rate: Optional[float] = 0.1,
+        use_feat_dynamic_real: Optional[bool] = False,
+        use_feat_static_cat: Optional[bool] = False,
+        use_feat_static_real: Optional[bool] = False,
         cardinality: Optional[List[int]] = None,
         embedding_dimension: Optional[List[int]] = None,
-        # distr_output: DistributionOutput = StudentTOutput(),
-        scaling: bool = True,
+        scaling: Optional[bool] = True,
         lags_seq: Optional[List[int]] = None,
         time_features: Optional[List[TimeFeature]] = None,
-        num_parallel_samples: int = 100,
-        forecast_type="flat",
-        dtype: DType = np.float32,
+        num_parallel_samples: Optional[int] = 100,
+        forecast_type: Optional[str] = "flat",
+        dtype: Optional[DType] = np.float32,
     ) -> None:
+
         super().__init__(trainer=trainer, dtype=dtype)
 
         assert (
@@ -184,7 +180,6 @@ class DeepRenewalEstimator(GluonEstimator):
             context_length if context_length is not None else prediction_length
         )
         self.prediction_length = prediction_length
-        # self.distr_output = distr_output
         self.distr_output_m = NegativeBinomialOutput()
         self.distr_output_q = NegativeBinomialOutput()
         self.distr_output_m.dtype = dtype
@@ -264,7 +259,6 @@ class DeepRenewalEstimator(GluonEstimator):
                 AddObservedValuesIndicator(
                     target_field=FieldName.TARGET,
                     output_field=FieldName.OBSERVED_VALUES,
-                    dummy_value=self.distr_output_m.value_in_support,
                     dtype=self.dtype,
                 ),
                 AddTimeFeatures(
@@ -296,15 +290,7 @@ class DeepRenewalEstimator(GluonEstimator):
                         else []
                     ),
                 ),
-                DropZeroTarget(
-                    input_fields=[
-                        FieldName.FEAT_TIME,
-                        FieldName.OBSERVED_VALUES,
-                    ],
-                    target_field=FieldName.TARGET,
-                    pred_length=self.prediction_length,
-                ),
-                InstanceSplitter(
+                RenewalInstanceSplitter(
                     target_field=FieldName.TARGET,
                     is_pad_field=FieldName.IS_PAD,
                     start_field=FieldName.START,
@@ -312,12 +298,7 @@ class DeepRenewalEstimator(GluonEstimator):
                     train_sampler=ExpectedNumInstanceSampler(num_instances=1),
                     past_length=self.history_length,
                     future_length=self.prediction_length,
-                    time_series_fields=[
-                        FieldName.FEAT_TIME,
-                        FieldName.OBSERVED_VALUES,
-                    ],
-                    dummy_value=self.distr_output_m.value_in_support,
-                    # pick_incomplete=False
+                    time_series_fields=[FieldName.FEAT_TIME, FieldName.OBSERVED_VALUES],
                 ),
             ]
         )

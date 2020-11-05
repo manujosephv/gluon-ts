@@ -94,7 +94,7 @@ class IntermittentSampleForecastGenerator(ForecastGenerator):
                     output = np.array(output_list)
                 else:
                     raise NotImplementedError(
-                        f"{self.forecast_type} is not a valud choice for forecast_type"
+                        f"{self.forecast_type} is not a value choice for forecast_type"
                     )
                 yield SampleForecast(
                     output,
