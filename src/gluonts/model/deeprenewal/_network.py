@@ -27,7 +27,6 @@ from gluonts.distribution import DistributionOutput, Distribution
 from gluonts.distribution.distribution import getF
 from gluonts.model.common import Tensor
 from gluonts.support.util import weighted_average
-from copy import deepcopy
 
 
 def prod(xs):

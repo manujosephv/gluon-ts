@@ -12,10 +12,10 @@
 # permissions and limitations under the License.
 
 # Standard library imports
-import numpy as np
 from typing import List, Optional
 
 # Third-party imports
+import numpy as np
 from mxnet.gluon import HybridBlock
 
 # First-party imports
@@ -44,12 +44,9 @@ from gluonts.transform import (
     VstackFeatures,
 )
 
-# Third-party imports
-from mxnet.gluon import HybridBlock
-
-from ._forecast_generator import IntermittentSampleForecastGenerator
 
 # Relative imports
+from ._forecast_generator import IntermittentSampleForecastGenerator
 from ._network import DeepRenewalPredictionNetwork, DeepRenewalTrainingNetwork
 from ._sampler import RenewalInstanceSplitter
 from ._transforms import AddInterDemandPeriodFeature
